@@ -1,0 +1,15 @@
+parameters:
+	level: 5
+	treatPhpDocTypesAsCertain: false
+	bootstrapFiles:
+		- config/bootstrap.php
+	paths:
+		- src/
+		- tests/
+	ignoreErrors:
+		-
+			identifier: argument.type
+			path: src/Application.php
+		-
+			identifier: generics.notGeneric
+			path: src/View/AppView.php
