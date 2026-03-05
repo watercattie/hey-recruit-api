@@ -1,0 +1,368 @@
+openapi: 3.0.3
+info:
+  title: Heyrecruit API
+  description: |
+    Multi-Tenant SaaS API für Recruiting - Bewerber-Synchronisation.
+    
+    ## Authentication
+    Alle Endpoints erfordern einen Bearer Token im Authorization Header:
+    ```
+    Authorization: Bearer <64-char-token>
+    ```
+    
+    ## Company Isolation
+    Jeder Token ist einer Company zugeordnet. Alle Daten sind automatisch mandantenisoliert.
+    
+    ## Upsert-Logik
+    Der POST-Endpoint führt ein "Upsert" durch:
+    - **Applicant**: Lookup via `external_id` (primär) oder `email` (fallback)
+    - **ApplicantJob**: Lookup via `applicant_id` + `job_id`
+    - **Result**: `created`, `updated`, oder `noop`
+  version: 2.0.0
+  contact:
+    name: Heyrecruit API Support
+
+servers:
+  - url: http://localhost:8765
+    description: Local Development
+
+tags:
+  - name: ApplicantJobs
+    description: Bewerbungen verwalten
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v2/applicant-jobs:
+    get:
+      tags:
+        - ApplicantJobs
+      summary: Liste aller Bewerbungen
+      description: Gibt alle Bewerbungen der authentifizierten Company zurück.
+      operationId: listApplicantJobs
+      responses:
+        '200':
+          description: Liste der Bewerbungen
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApplicantJobListItem'
+              example:
+                data:
+                  - applicant_external_id: "EXT-123"
+                    job_external_id: "JOB-456"
+                    status: "screening"
+                    applied_at: "2026-03-01T10:00:00+00:00"
+                    created: "2026-03-01T10:00:00+00:00"
+                    modified: "2026-03-01T12:00:00+00:00"
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    
+    post:
+      tags:
+        - ApplicantJobs
+      summary: Bewerber + Bewerbung erstellen/aktualisieren (Upsert)
+      description: |
+        Erstellt oder aktualisiert einen Bewerber und dessen Bewerbung.
+        
+        **Upsert-Logik:**
+        1. Applicant suchen: erst `external_id`, dann `email`
+        2. Nicht gefunden → CREATE, sonst UPDATE
+        3. ApplicantJob suchen: `applicant_id` + `job_id`
+        4. Nicht gefunden → CREATE, sonst UPDATE
+        
+        **Result:**
+        - `created`: Neuer Bewerber und/oder neue Bewerbung erstellt
+        - `updated`: Bestehende Bewerbung aktualisiert
+        - `noop`: Keine Änderung (Daten identisch)
+      operationId: upsertApplicantJob
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertRequest'
+            examples:
+              newApplicant:
+                summary: Neuer Bewerber mit external_id
+                value:
+                  applicant:
+                    external_id: "EXT-123"
+                    email: "max@example.com"
+                    first_name: "Max"
+                    last_name: "Mustermann"
+                    phone: "+49 123 456"
+                  job_id: 1
+                  status: "new"
+                  applied_at: "2026-03-01T10:00:00Z"
+              emailOnly:
+                summary: Bewerber nur mit Email
+                value:
+                  applicant:
+                    email: "anna@example.com"
+                    first_name: "Anna"
+                    last_name: "Schmidt"
+                  job_id: 2
+              minimal:
+                summary: Minimales Request
+                value:
+                  applicant:
+                    external_id: "EXT-456"
+                  job_id: 1
+      responses:
+        '200':
+          description: Upsert erfolgreich
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/UpsertResult'
+              examples:
+                created:
+                  summary: Neu erstellt
+                  value:
+                    data:
+                      result: "created"
+                      applicant_job_id: 123
+                      applicant_id: 456
+                updated:
+                  summary: Aktualisiert
+                  value:
+                    data:
+                      result: "updated"
+                      applicant_job_id: 123
+                      applicant_id: 456
+                noop:
+                  summary: Keine Änderung
+                  value:
+                    data:
+                      result: "noop"
+                      applicant_job_id: 123
+                      applicant_id: 456
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /api/v2/applicant-jobs/{id}:
+    get:
+      tags:
+        - ApplicantJobs
+      summary: Einzelne Bewerbung abrufen
+      description: Gibt Details einer Bewerbung inkl. Bewerber- und Job-Daten zurück.
+      operationId: getApplicantJob
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Die ApplicantJob ID
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: Bewerbungsdetails
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ApplicantJobListItem'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: 64-Zeichen API Token
+
+  schemas:
+    ApplicantJobListItem:
+      type: object
+      properties:
+        applicant_external_id:
+          type: string
+          example: "EXT-123"
+        job_external_id:
+          type: string
+          example: "JOB-456"
+        status:
+          type: string
+          enum: [new, screening, interview, offer, hired, rejected]
+          example: "screening"
+        applied_at:
+          type: string
+          format: date-time
+          example: "2026-03-01T10:00:00+00:00"
+        created:
+          type: string
+          format: date-time
+        modified:
+          type: string
+          format: date-time
+
+    UpsertRequest:
+      type: object
+      required:
+        - applicant
+        - job_id
+      properties:
+        applicant:
+          $ref: '#/components/schemas/ApplicantInput'
+        job_id:
+          type: integer
+          description: Die Job ID (muss existieren und zur Company gehören)
+          example: 1
+        status:
+          type: string
+          enum: [new, screening, interview, offer, hired, rejected]
+          default: "new"
+          description: Bewerbungsstatus
+        applied_at:
+          type: string
+          format: date-time
+          description: Bewerbungsdatum (default = jetzt)
+          example: "2026-03-01T10:00:00Z"
+
+    ApplicantInput:
+      type: object
+      description: |
+        Bewerber-Daten. Mindestens `external_id` ODER `email` erforderlich.
+      properties:
+        external_id:
+          type: string
+          description: Externe ID (primärer Identifier)
+          example: "EXT-123"
+        email:
+          type: string
+          format: email
+          description: Email (fallback Identifier)
+          example: "max@example.com"
+        first_name:
+          type: string
+          example: "Max"
+        last_name:
+          type: string
+          example: "Mustermann"
+        phone:
+          type: string
+          example: "+49 123 456789"
+
+    UpsertResult:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [created, updated, noop]
+          description: |
+            - `created`: Neuer Bewerber und/oder neue Bewerbung
+            - `updated`: Bestehende Daten aktualisiert
+            - `noop`: Keine Änderung
+        applicant_job_id:
+          type: integer
+          description: Die ApplicantJob ID
+        applicant_id:
+          type: integer
+          description: Die Applicant ID
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: "VALIDATION_ERROR"
+            message:
+              type: string
+              example: "Validation failed"
+            details:
+              type: object
+              additionalProperties:
+                type: array
+                items:
+                  type: string
+              example:
+                job_id: ["job_id is required"]
+
+  responses:
+    Unauthorized:
+      description: Nicht authentifiziert
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "UNAUTHORIZED"
+                  message:
+                    type: string
+                    example: "Invalid or missing API token"
+
+    BadRequest:
+      description: Ungültiger Request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "BAD_REQUEST"
+                  message:
+                    type: string
+                    example: "Request body is required"
+
+    NotFound:
+      description: Resource nicht gefunden
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "NOT_FOUND"
+                  message:
+                    type: string
+                    example: "Applicant job not found"
+
+    ValidationError:
+      description: Validierungsfehler
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error:
+              code: "VALIDATION_ERROR"
+              message: "Validation failed"
+              details:
+                job_id: ["Job does not exist"]
+                applicant.external_id: ["external_id or email is required"]
