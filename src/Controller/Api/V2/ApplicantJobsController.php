@@ -1,0 +1,122 @@
+<?php
+declare(strict_types=1);
+
+namespace App\Controller\Api\V2;
+
+use App\Controller\Api\ApiController;
+use App\Dto\ApplicantJobUpsertRequestDto;
+use App\Error\Exception\ValidationException;
+use App\Repository\ApplicantJobRepository;
+use App\Service\ApplicantJobTransformer;
+use App\Service\ApplicantJobUpsertService;
+use App\Validator\BusinessValidator;
+use App\Validator\RequestValidator;
+use Cake\Http\Exception\BadRequestException;
+use Cake\Http\Exception\NotFoundException;
+
+/**
+ * ApplicantJobs Controller
+ *
+ * Handles applicant-job relationship sync via REST API.
+ * Uses action injection for dependencies.
+ */
+class ApplicantJobsController extends ApiController
+{
+    /**
+     * List all applicant-job relationships for the authenticated company.
+     *
+     * GET /api/v2/applicant-jobs
+     *
+     * Note: Pagination planned for future version.
+     *
+     * @param \App\Repository\ApplicantJobRepository $repository Repository.
+     * @param \App\Service\ApplicantJobTransformer $transformer Transformer.
+     * @return void
+     */
+    public function index(
+        ApplicantJobRepository $repository,
+        ApplicantJobTransformer $transformer,
+    ): void {
+        $companyId = $this->getCompanyId();
+        $items = $repository->findForCompany($companyId);
+
+        $data = $transformer->transformAll($items);
+        $this->set(compact('data'));
+        $this->viewBuilder()->setOption('serialize', ['data']);
+    }
+
+    /**
+     * Get a single applicant-job relationship.
+     *
+     * GET /api/v2/applicant-jobs/{id}
+     *
+     * @param \App\Repository\ApplicantJobRepository $repository Repository.
+     * @param \App\Service\ApplicantJobTransformer $transformer Transformer.
+     * @param string $id The applicant-job ID.
+     * @return void
+     */
+    public function view(
+        ApplicantJobRepository $repository,
+        ApplicantJobTransformer $transformer,
+        string $id,
+    ): void {
+        $companyId = $this->getCompanyId();
+        $item = $repository->findByIdForCompany((int)$id, $companyId);
+
+        if ($item === null) {
+            throw new NotFoundException('Applicant job not found');
+        }
+
+        $data = $transformer->transform($item);
+        $this->set(compact('data'));
+        $this->viewBuilder()->setOption('serialize', ['data']);
+    }
+
+    /**
+     * Sync (upsert) applicant-job relationships.
+     *
+     * POST /api/v2/applicant-jobs
+     *
+     * Validation flow:
+     * 1. RequestValidator: Schema validation (required, format, enum) → 400
+     * 2. BusinessValidator: Business rules (job ownership) → 422
+     * 3. Service: Execute upsert
+     *
+     * @param \App\Service\ApplicantJobUpsertService $upsertService Upsert service.
+     * @param \App\Validator\RequestValidator $requestValidator Schema validator.
+     * @param \App\Validator\BusinessValidator $businessValidator Business validator.
+     * @return void
+     */
+    public function add(
+        ApplicantJobUpsertService $upsertService,
+        RequestValidator $requestValidator,
+        BusinessValidator $businessValidator,
+    ): void {
+        $requestData = $this->request->getData();
+        if (!is_array($requestData) || empty($requestData)) {
+            throw new BadRequestException('Request body is required');
+        }
+
+        $schemaErrors = $requestValidator->validateApplicantJobUpsert($requestData);
+        if (!empty($schemaErrors)) {
+            throw new ValidationException('Validation failed', $schemaErrors);
+        }
+
+        $dto = ApplicantJobUpsertRequestDto::fromArray($requestData);
+
+        $businessErrors = $businessValidator->validateApplicantJobUpsert($dto, $this->getCompanyId());
+        if (!empty($businessErrors)) {
+            throw new ValidationException('Validation failed', $businessErrors);
+        }
+
+        $result = $upsertService->upsert(
+            request: $dto,
+            companyId: $this->getCompanyId(),
+            apiTokenId: $this->getApiToken()->id,
+        );
+
+        $data = $result;
+        $this->set(compact('data'));
+        $this->viewBuilder()->setOption('serialize', ['data']);
+    }
+}
