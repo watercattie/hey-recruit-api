@@ -20,7 +20,7 @@ bin/cake migrations migrate
 bin/cake migrations seed
 
 # Tests ausführen
-vendor/bin/phpunit          # 89 Tests, 218 Assertions
+vendor/bin/phpunit          # 88 Tests, 216 Assertions
 vendor/bin/phpstan analyse  # Level 5, keine Errors
 vendor/bin/phpcs            # CakePHP Standard
 

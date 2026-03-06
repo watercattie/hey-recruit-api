@@ -3,26 +3,15 @@ declare(strict_types=1);
 
 namespace App\Service;
 
-use Cake\ORM\Locator\LocatorAwareTrait;
+use App\Model\Table\AuditLogsTable;
 
-/**
- * Service for writing audit log entries.
- */
 class AuditLogService
 {
-    use LocatorAwareTrait;
+    public function __construct(
+        private AuditLogsTable $auditLogsTable,
+    ) {
+    }
 
-    /**
-     * Log an upsert operation.
-     *
-     * @param int|null $apiTokenId The API token ID.
-     * @param string $entityType The entity type (e.g., 'applicant_job').
-     * @param int|null $entityId The entity ID.
-     * @param string $action The action performed (e.g., 'upsert').
-     * @param string $result The result (created, updated, noop).
-     * @param array<string, mixed>|null $payload Optional payload data.
-     * @return void
-     */
     public function log(
         ?int $apiTokenId,
         string $entityType,
@@ -31,9 +20,7 @@ class AuditLogService
         string $result,
         ?array $payload = null,
     ): void {
-        $auditLogsTable = $this->fetchTable('AuditLogs');
-
-        $entry = $auditLogsTable->newEntity([
+        $entry = $this->auditLogsTable->newEntity([
             'api_token_id' => $apiTokenId,
             'entity_type' => $entityType,
             'entity_id' => $entityId,
@@ -42,6 +29,6 @@ class AuditLogService
             'payload' => $payload !== null ? json_encode($payload) : null,
         ]);
 
-        $auditLogsTable->saveOrFail($entry);
+        $this->auditLogsTable->saveOrFail($entry);
     }
 }

@@ -26,7 +26,9 @@ class ApplicantJobRepositoryTest extends TestCase
     public function setUp(): void
     {
         parent::setUp();
-        $this->repository = new ApplicantJobRepository();
+        /** @var ApplicantJobsTable $table */
+        $table = $this->fetchTable('ApplicantJobs');
+        $this->repository = new ApplicantJobRepository($table);
     }
 
     /**

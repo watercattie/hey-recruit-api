@@ -29,7 +29,9 @@ class BusinessValidatorTest extends TestCase
     public function setUp(): void
     {
         parent::setUp();
-        $this->validator = new BusinessValidator();
+        /** @var JobsTable $jobsTable */
+        $jobsTable = $this->fetchTable('Jobs');
+        $this->validator = new BusinessValidator($jobsTable);
     }
 
     /**
@@ -102,5 +104,76 @@ class BusinessValidatorTest extends TestCase
         $errors = $this->validator->validateApplicantJobUpsert($request, 2);
 
         $this->assertEmpty($errors);
+    }
+
+    // ========== IDENTIFIER VALIDATION ==========
+
+    /**
+     * Test missing identifier returns error
+     */
+    public function testMissingIdentifier(): void
+    {
+        $request = new ApplicantJobUpsertRequestDto(
+            applicant: new ApplicantRequestDto(),
+            jobId: 1,
+            status: 'new',
+            appliedAt: new DateTime(),
+        );
+
+        $errors = $this->validator->validateApplicantJobUpsert($request, 1);
+
+        $this->assertArrayHasKey('applicant.external_id', $errors);
+        $this->assertStringContainsString('external_id or email is required', $errors['applicant.external_id'][0]);
+    }
+
+    /**
+     * Test email alone is valid identifier
+     */
+    public function testEmailAsIdentifier(): void
+    {
+        $request = new ApplicantJobUpsertRequestDto(
+            applicant: new ApplicantRequestDto(email: 'test@example.com'),
+            jobId: 1,
+            status: 'new',
+            appliedAt: new DateTime(),
+        );
+
+        $errors = $this->validator->validateApplicantJobUpsert($request, 1);
+
+        $this->assertEmpty($errors);
+    }
+
+    /**
+     * Test empty string external_id is rejected
+     */
+    public function testEmptyStringExternalIdIsRejected(): void
+    {
+        $request = new ApplicantJobUpsertRequestDto(
+            applicant: new ApplicantRequestDto(externalId: ''),
+            jobId: 1,
+            status: 'new',
+            appliedAt: new DateTime(),
+        );
+
+        $errors = $this->validator->validateApplicantJobUpsert($request, 1);
+
+        $this->assertArrayHasKey('applicant.external_id', $errors);
+    }
+
+    /**
+     * Test whitespace-only external_id is rejected
+     */
+    public function testWhitespaceOnlyExternalIdIsRejected(): void
+    {
+        $request = new ApplicantJobUpsertRequestDto(
+            applicant: new ApplicantRequestDto(externalId: '   '),
+            jobId: 1,
+            status: 'new',
+            appliedAt: new DateTime(),
+        );
+
+        $errors = $this->validator->validateApplicantJobUpsert($request, 1);
+
+        $this->assertArrayHasKey('applicant.external_id', $errors);
     }
 }

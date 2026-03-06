@@ -8,20 +8,8 @@ use App\Dto\UpsertResultDto;
 use App\Repository\ApplicantJobRepository;
 use App\Repository\ApplicantRepository;
 
-/**
- * Service for upserting applicant-job relationships.
- *
- * Orchestrates the upsert workflow using repositories for data access.
- */
 class ApplicantJobUpsertService
 {
-    /**
-     * Constructor.
-     *
-     * @param \App\Repository\ApplicantRepository $applicantRepository Applicant repository.
-     * @param \App\Repository\ApplicantJobRepository $applicantJobRepository ApplicantJob repository.
-     * @param \App\Service\AuditLogService $auditLogService Audit log service.
-     */
     public function __construct(
         private ApplicantRepository $applicantRepository,
         private ApplicantJobRepository $applicantJobRepository,
@@ -29,14 +17,6 @@ class ApplicantJobUpsertService
     ) {
     }
 
-    /**
-     * Upsert an applicant-job relationship.
-     *
-     * @param \App\Dto\ApplicantJobUpsertRequestDto $request The request DTO.
-     * @param int $companyId The company ID.
-     * @param int|null $apiTokenId The API token ID for audit logging.
-     * @return \App\Dto\UpsertResultDto
-     */
     public function upsert(
         ApplicantJobUpsertRequestDto $request,
         int $companyId,
@@ -77,14 +57,6 @@ class ApplicantJobUpsertService
         });
     }
 
-    /**
-     * Determine the result string based on what happened.
-     *
-     * @param bool $applicantCreated Was a new applicant created?
-     * @param bool $applicantJobCreated Was a new applicant-job created?
-     * @param bool $applicantJobUpdated Was the applicant-job updated?
-     * @return string The result: created, updated, or noop.
-     */
     private function determineResult(
         bool $applicantCreated,
         bool $applicantJobCreated,

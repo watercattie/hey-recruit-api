@@ -5,18 +5,10 @@ namespace App\Service;
 
 use App\Dto\ApplicantJobResponseDto;
 use App\Model\Entity\ApplicantJob;
+use Cake\Collection\Collection;
 
-/**
- * Transformer for ApplicantJob entities to DTOs.
- */
 class ApplicantJobTransformer
 {
-    /**
-     * Transform a single ApplicantJob entity to DTO.
-     *
-     * @param \App\Model\Entity\ApplicantJob $entity The entity to transform.
-     * @return \App\Dto\ApplicantJobResponseDto
-     */
     public function transform(ApplicantJob $entity): ApplicantJobResponseDto
     {
         return new ApplicantJobResponseDto(
@@ -29,20 +21,10 @@ class ApplicantJobTransformer
         );
     }
 
-    /**
-     * Transform a collection of ApplicantJob entities to DTOs.
-     *
-     * @param iterable<\App\Model\Entity\ApplicantJob|\Cake\Datasource\EntityInterface> $entities The entities to transform.
-     * @return array<\App\Dto\ApplicantJobResponseDto>
-     */
     public function transformAll(iterable $entities): array
     {
-        $result = [];
-        /** @var \App\Model\Entity\ApplicantJob $entity */
-        foreach ($entities as $entity) {
-            $result[] = $this->transform($entity);
-        }
-
-        return $result;
+        return (new Collection($entities))
+            ->map(fn($e) => $this->transform($e))
+            ->toArray();
     }
 }

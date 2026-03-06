@@ -14,11 +14,12 @@ Externe Systeme sollen Bewerber und Bewerbungen über eine REST-API synchronisie
 
 ## Story 1: API-Zugriff ermöglichen
 
-**Als** externes System  
-**möchte ich** mich mit einem API-Token authentifizieren,  
+**Als** externes System
+**möchte ich** mich mit einem API-Token authentifizieren,
 **um** sicher auf die Heyrecruit-API zugreifen zu können.
 
 ### Akzeptanzkriterien
+
 - [ ] Mit gültigem Token kann ich API-Requests machen
 - [ ] Ohne/mit ungültigem Token erhalte ich einen Fehler
 - [ ] Mein Token-Zugriff wird geloggt
@@ -28,9 +29,11 @@ Externe Systeme sollen Bewerber und Bewerbungen über eine REST-API synchronisie
 ### Tasks
 
 #### Task 1.1: DB-Schema (~1.5h)
+
 Migrationen für alle Tabellen mit Constraints.
 
 **Tabellen:**
+
 - `companies` (id, name)
 - `api_tokens` (company_id, token, is_active) → UNIQUE(token)
 - `applicants` (company_id, external_id, email) → UNIQUE(company_id, external_id/email)
@@ -43,13 +46,16 @@ Migrationen für alle Tabellen mit Constraints.
 ---
 
 #### Task 1.2: ORM + Testdaten (~1.5h)
+
 Table-Klassen mit Associations, Validation, Seeder.
 
 **Associations:**
+
 - Company hasMany → ApiTokens, Applicants, Jobs
 - ApplicantJob belongsTo → Applicant, Job
 
 **Validation:**
+
 - Applicant: `external_id` OR `email` required
 - ApplicantJob: `status` ∈ {new, screening, interview, offer, hired, rejected}
 
@@ -60,9 +66,11 @@ Table-Klassen mit Associations, Validation, Seeder.
 ---
 
 #### Task 1.3: Token-Auth (~2h)
+
 Bearer Token Middleware mit Company-Context.
 
 **Flow:**
+
 ```
 Authorization: Bearer <token>
 ├─ fehlt/ungültig/inaktiv → 401
@@ -77,11 +85,12 @@ Authorization: Bearer <token>
 
 ## Story 2: Bewerbungen abrufen
 
-**Als** externes System  
-**möchte ich** Bewerbungen zu einem Job abrufen,  
+**Als** externes System
+**möchte ich** Bewerbungen zu einem Job abrufen,
 **um** diese in meinem System anzeigen zu können.
 
 ### Akzeptanzkriterien
+
 - [ ] Ich kann alle Bewerbungen zu einem Job auflisten
 - [ ] Ich kann Details einer Bewerbung inkl. Bewerber-Daten abrufen
 - [ ] Ich sehe nur Daten meiner eigenen Company
@@ -91,6 +100,7 @@ Authorization: Bearer <token>
 ### Tasks
 
 #### Task 2.1: List-Endpoint (~1h)
+
 ```
 GET /api/v2/applicant-jobs?job_id=123
 → {"data": [{"id": 1, "status": "new", "applied_at": "..."}]}
@@ -104,6 +114,7 @@ GET /api/v2/applicant-jobs?job_id=123
 ---
 
 #### Task 2.2: Detail-Endpoint (~1h)
+
 ```
 GET /api/v2/applicant-jobs/123
 → {"data": {"id": 123, "applicant": {...}, "job": {...}}}
@@ -120,11 +131,12 @@ GET /api/v2/applicant-jobs/123
 
 ## Story 3: Bewerbungen synchronisieren
 
-**Als** externes System  
-**möchte ich** Bewerber und Bewerbungen erstellen/aktualisieren,  
+**Als** externes System
+**möchte ich** Bewerber und Bewerbungen erstellen/aktualisieren,
 **um** Daten ohne Duplikate zu übertragen.
 
 ### Akzeptanzkriterien
+
 - [ ] Neuer Bewerber + Bewerbung wird erstellt
 - [ ] Existierender Bewerber wird erkannt (via external_id oder email)
 - [ ] Existierende Bewerbung wird aktualisiert (oder "noop" wenn keine Änderung)
@@ -135,6 +147,7 @@ GET /api/v2/applicant-jobs/123
 ### Tasks
 
 #### Task 3.1: Upsert-Endpoint (~1h)
+
 ```
 POST /api/v2/applicant-jobs
 {
@@ -153,9 +166,11 @@ POST /api/v2/applicant-jobs
 ---
 
 #### Task 3.2: Upsert-Logik (~2h)
+
 Applicant + ApplicantJob upsert in Transaktion.
 
 **Logik:**
+
 1. Applicant suchen: erst `external_id`, dann `email`
 2. Applicant erstellen oder aktualisieren
 3. ApplicantJob suchen: `applicant_id` + `job_id`
@@ -169,6 +184,7 @@ Applicant + ApplicantJob upsert in Transaktion.
 ---
 
 #### Task 3.3: Audit-Logging (~1h)
+
 Jede Operation loggen.
 
 **Felder:** api_token_id, entity_type, entity_id, action, result, payload

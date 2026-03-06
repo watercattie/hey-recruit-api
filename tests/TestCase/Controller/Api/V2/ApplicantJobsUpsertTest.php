@@ -41,17 +41,32 @@ class ApplicantJobsUpsertTest extends TestCase
     {
         parent::setUp();
 
+        // Fetch tables
+        /** @var ApplicantsTable $applicantsTable */
+        $applicantsTable = $this->fetchTable('Applicants');
+        /** @var ApplicantJobsTable $applicantJobsTable */
+        $applicantJobsTable = $this->fetchTable('ApplicantJobs');
+        /** @var AuditLogsTable $auditLogsTable */
+        $auditLogsTable = $this->fetchTable('AuditLogs');
+        /** @var JobsTable $jobsTable */
+        $jobsTable = $this->fetchTable('Jobs');
+
+        // Create repositories and services
+        $applicantRepository = new ApplicantRepository($applicantsTable);
+        $applicantJobRepository = new ApplicantJobRepository($applicantJobsTable);
+        $auditLogService = new AuditLogService($auditLogsTable);
+
         // Register services in container for action injection
-        $this->mockService(ApplicantRepository::class, fn() => new ApplicantRepository());
-        $this->mockService(ApplicantJobRepository::class, fn() => new ApplicantJobRepository());
-        $this->mockService(AuditLogService::class, fn() => new AuditLogService());
+        $this->mockService(ApplicantRepository::class, fn() => $applicantRepository);
+        $this->mockService(ApplicantJobRepository::class, fn() => $applicantJobRepository);
+        $this->mockService(AuditLogService::class, fn() => $auditLogService);
         $this->mockService(ApplicantJobTransformer::class, fn() => new ApplicantJobTransformer());
         $this->mockService(RequestValidator::class, fn() => new RequestValidator());
-        $this->mockService(BusinessValidator::class, fn() => new BusinessValidator());
+        $this->mockService(BusinessValidator::class, fn() => new BusinessValidator($jobsTable));
         $this->mockService(ApplicantJobUpsertService::class, fn() => new ApplicantJobUpsertService(
-            new ApplicantRepository(),
-            new ApplicantJobRepository(),
-            new AuditLogService(),
+            $applicantRepository,
+            $applicantJobRepository,
+            $auditLogService,
         ));
     }
 

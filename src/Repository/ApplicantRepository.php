@@ -7,41 +7,14 @@ use App\Dto\ApplicantRequestDto;
 use App\Dto\ApplicantUpsertResult;
 use App\Model\Entity\Applicant;
 use App\Model\Table\ApplicantsTable;
-use Cake\ORM\Locator\LocatorAwareTrait;
 
-/**
- * Repository for Applicant data access.
- */
 class ApplicantRepository
 {
-    use LocatorAwareTrait;
-
-    private ApplicantsTable $table;
-
-    /**
-     * Constructor.
-     *
-     * @param \App\Model\Table\ApplicantsTable|null $table Table instance for testing.
-     */
-    public function __construct(?ApplicantsTable $table = null)
-    {
-        if ($table !== null) {
-            $this->table = $table;
-        } else {
-            /** @var \App\Model\Table\ApplicantsTable $t */
-            $t = $this->fetchTable('Applicants');
-            $this->table = $t;
-        }
+    public function __construct(
+        private ApplicantsTable $table,
+    ) {
     }
 
-    /**
-     * Find applicant by external_id or email.
-     *
-     * @param int $companyId The company ID.
-     * @param string|null $externalId External ID to search.
-     * @param string|null $email Email to search.
-     * @return \App\Model\Entity\Applicant|null
-     */
     public function findByIdentifier(int $companyId, ?string $externalId, ?string $email): ?Applicant
     {
         if ($externalId !== null) {
@@ -71,13 +44,6 @@ class ApplicantRepository
         return null;
     }
 
-    /**
-     * Create new applicant entity (not saved).
-     *
-     * @param \App\Dto\ApplicantRequestDto $dto The applicant data.
-     * @param int $companyId The company ID.
-     * @return \App\Model\Entity\Applicant
-     */
     public function create(ApplicantRequestDto $dto, int $companyId): Applicant
     {
         /** @var \App\Model\Entity\Applicant $applicant */
@@ -93,13 +59,6 @@ class ApplicantRepository
         return $applicant;
     }
 
-    /**
-     * Update existing applicant with new data.
-     *
-     * @param \App\Model\Entity\Applicant $applicant The applicant to update.
-     * @param \App\Dto\ApplicantRequestDto $dto The new data.
-     * @return void
-     */
     public function update(Applicant $applicant, ApplicantRequestDto $dto): void
     {
         if ($dto->externalId !== null) {
@@ -119,14 +78,6 @@ class ApplicantRepository
         }
     }
 
-    /**
-     * Upsert applicant: find existing or create new, update data, and save.
-     *
-     * @param \App\Dto\ApplicantRequestDto $dto The applicant data.
-     * @param int $companyId The company ID.
-     * @return \App\Dto\ApplicantUpsertResult
-     * @throws \Cake\ORM\Exception\PersistenceFailedException On save failure.
-     */
     public function upsert(ApplicantRequestDto $dto, int $companyId): ApplicantUpsertResult
     {
         $applicant = $this->findByIdentifier($companyId, $dto->externalId, $dto->email);
@@ -144,11 +95,6 @@ class ApplicantRepository
         return new ApplicantUpsertResult($applicant, $created);
     }
 
-    /**
-     * Get the table instance (for transaction handling).
-     *
-     * @return \App\Model\Table\ApplicantsTable
-     */
     public function getTable(): ApplicantsTable
     {
         return $this->table;

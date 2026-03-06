@@ -78,15 +78,9 @@ return function (RouteBuilder $routes): void {
         $builder->fallbacks();
     });
 
-    /*
-     * API v2 routes - RESTful endpoints for applicant-job sync
-     */
     $routes->prefix('Api/V2', function (RouteBuilder $builder): void {
         $builder->setExtensions(['json']);
 
-        // GET /api/v2/applicant-jobs - list all applicant-jobs for company
-        // GET /api/v2/applicant-jobs/{id} - get single applicant-job
-        // POST /api/v2/applicant-jobs - sync (upsert) applicant-jobs
         $builder->resources('ApplicantJobs', [
             'only' => ['index', 'view', 'create'],
         ]);

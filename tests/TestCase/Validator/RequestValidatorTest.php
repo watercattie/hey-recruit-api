@@ -90,7 +90,7 @@ class RequestValidatorTest extends TestCase
         $errors = $this->validator->validateApplicantJobUpsert($data);
 
         $this->assertArrayHasKey('job_id', $errors);
-        $this->assertStringContainsString('numeric', $errors['job_id'][0]);
+        $this->assertStringContainsString('integer', $errors['job_id'][0]);
     }
 
     /**
@@ -164,42 +164,6 @@ class RequestValidatorTest extends TestCase
     }
 
     /**
-     * Test missing identifier returns error
-     */
-    public function testMissingIdentifier(): void
-    {
-        $data = [
-            'applicant' => [
-                'first_name' => 'John',
-                'last_name' => 'Doe',
-            ],
-            'job_id' => 1,
-        ];
-
-        $errors = $this->validator->validateApplicantJobUpsert($data);
-
-        $this->assertArrayHasKey('applicant.external_id', $errors);
-        $this->assertStringContainsString('external_id or email is required', $errors['applicant.external_id'][0]);
-    }
-
-    /**
-     * Test email as identifier is valid
-     */
-    public function testEmailAsIdentifier(): void
-    {
-        $data = [
-            'applicant' => [
-                'email' => 'test@example.com',
-            ],
-            'job_id' => 1,
-        ];
-
-        $errors = $this->validator->validateApplicantJobUpsert($data);
-
-        $this->assertEmpty($errors);
-    }
-
-    /**
      * Test invalid email format
      */
     public function testInvalidEmailFormat(): void
@@ -233,61 +197,9 @@ class RequestValidatorTest extends TestCase
         // Multiple errors should be present
         $this->assertArrayHasKey('job_id', $errors);
         $this->assertArrayHasKey('status', $errors);
-        $this->assertArrayHasKey('applicant.external_id', $errors);
     }
 
     // ========== EDGE CASES ==========
-
-    /**
-     * Test empty string as external_id is rejected
-     */
-    public function testEmptyStringExternalIdIsRejected(): void
-    {
-        $data = [
-            'applicant' => [
-                'external_id' => '',
-            ],
-            'job_id' => 1,
-        ];
-
-        $errors = $this->validator->validateApplicantJobUpsert($data);
-
-        $this->assertArrayHasKey('applicant.external_id', $errors);
-    }
-
-    /**
-     * Test whitespace-only external_id is rejected
-     */
-    public function testWhitespaceOnlyExternalIdIsRejected(): void
-    {
-        $data = [
-            'applicant' => [
-                'external_id' => '   ',
-            ],
-            'job_id' => 1,
-        ];
-
-        $errors = $this->validator->validateApplicantJobUpsert($data);
-
-        $this->assertArrayHasKey('applicant.external_id', $errors);
-    }
-
-    /**
-     * Test empty string as email is rejected
-     */
-    public function testEmptyStringEmailIsRejected(): void
-    {
-        $data = [
-            'applicant' => [
-                'email' => '',
-            ],
-            'job_id' => 1,
-        ];
-
-        $errors = $this->validator->validateApplicantJobUpsert($data);
-
-        $this->assertArrayHasKey('applicant.external_id', $errors);
-    }
 
     /**
      * Test empty string as job_id is rejected
@@ -500,9 +412,9 @@ class RequestValidatorTest extends TestCase
      * IDN domains must be converted to punycode (e.g., 'user@xn--r8jz45g.jp') before validation.
      * This is handled by the client or a separate punycode conversion step.
      */
-    public function testInternationalEmailRequiresPunycode(): void
+    public function testInternationalEmailIsAccepted(): void
     {
-        // Raw IDN domain is rejected by filter_var
+        // CakePHP Validation::email() supports IDN emails
         $data = [
             'applicant' => [
                 'email' => 'user@例え.jp',
@@ -512,10 +424,10 @@ class RequestValidatorTest extends TestCase
 
         $errors = $this->validator->validateApplicantJobUpsert($data);
 
-        // This is expected - IDN must be punycode-encoded
-        $this->assertArrayHasKey('applicant.email', $errors);
+        // IDN emails are valid
+        $this->assertEmpty($errors);
 
-        // Punycode-encoded version works
+        // Punycode-encoded version also works
         $data['applicant']['email'] = 'user@xn--r8jz45g.jp';
         $errors = $this->validator->validateApplicantJobUpsert($data);
         $this->assertEmpty($errors);

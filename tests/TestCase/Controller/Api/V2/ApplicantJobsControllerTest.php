@@ -36,7 +36,9 @@ class ApplicantJobsControllerTest extends TestCase
         parent::setUp();
 
         // Register services in container for action injection
-        $this->mockService(ApplicantJobRepository::class, fn() => new ApplicantJobRepository());
+        /** @var ApplicantJobsTable $table */
+        $table = $this->fetchTable('ApplicantJobs');
+        $this->mockService(ApplicantJobRepository::class, fn() => new ApplicantJobRepository($table));
         $this->mockService(ApplicantJobTransformer::class, fn() => new ApplicantJobTransformer());
     }
 

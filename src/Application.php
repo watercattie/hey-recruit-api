@@ -18,6 +18,10 @@ namespace App;
 
 use App\Middleware\ApiAwareCsrfMiddleware;
 use App\Middleware\HostHeaderMiddleware;
+use App\Model\Table\ApplicantJobsTable;
+use App\Model\Table\ApplicantsTable;
+use App\Model\Table\AuditLogsTable;
+use App\Model\Table\JobsTable;
 use App\Repository\ApplicantJobRepository;
 use App\Repository\ApplicantRepository;
 use App\Service\ApplicantJobTransformer;
@@ -152,25 +156,41 @@ class Application extends BaseApplication implements AuthenticationServiceProvid
      */
     public function services(ContainerInterface $container): void
     {
-        // Repositories (no dependencies)
-        $container->addShared(ApplicantRepository::class, fn() => new ApplicantRepository());
-        $container->addShared(ApplicantJobRepository::class, fn() => new ApplicantJobRepository());
+        $locator = FactoryLocator::get('Table');
+        /** @var \Cake\ORM\Locator\TableLocator $tableLocator */
+        $tableLocator = $locator;
 
-        // Validators (no dependencies)
+        // Tables (shared instances via TableLocator)
+        $container->addShared(ApplicantsTable::class, fn() => $tableLocator->get('Applicants'));
+        $container->addShared(ApplicantJobsTable::class, fn() => $tableLocator->get('ApplicantJobs'));
+        $container->addShared(JobsTable::class, fn() => $tableLocator->get('Jobs'));
+        $container->addShared(AuditLogsTable::class, fn() => $tableLocator->get('AuditLogs'));
+
+        // Repositories
+        $container->addShared(ApplicantRepository::class, fn() => new ApplicantRepository(
+            $container->get(ApplicantsTable::class),
+        ));
+        $container->addShared(ApplicantJobRepository::class, fn() => new ApplicantJobRepository(
+            $container->get(ApplicantJobsTable::class),
+        ));
+
+        // Validators
         $container->addShared(RequestValidator::class, fn() => new RequestValidator());
-        $container->addShared(BusinessValidator::class, fn() => new BusinessValidator());
+        $container->addShared(BusinessValidator::class, fn() => new BusinessValidator(
+            $container->get(JobsTable::class),
+        ));
 
-        // Services with dependencies - explicitly resolve
-        $container->addShared(AuditLogService::class, fn() => new AuditLogService());
+        // Services
+        $container->addShared(AuditLogService::class, fn() => new AuditLogService(
+            $container->get(AuditLogsTable::class),
+        ));
         $container->addShared(ApplicantJobTransformer::class, fn() => new ApplicantJobTransformer());
 
-        $container->addShared(ApplicantJobUpsertService::class, function () use ($container) {
-            return new ApplicantJobUpsertService(
-                $container->get(ApplicantRepository::class),
-                $container->get(ApplicantJobRepository::class),
-                $container->get(AuditLogService::class),
-            );
-        });
+        $container->addShared(ApplicantJobUpsertService::class, fn() => new ApplicantJobUpsertService(
+            $container->get(ApplicantRepository::class),
+            $container->get(ApplicantJobRepository::class),
+            $container->get(AuditLogService::class),
+        ));
     }
 
     /**

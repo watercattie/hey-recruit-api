@@ -7,16 +7,8 @@ use App\Error\Exception\ValidationException;
 use Cake\Error\Renderer\WebExceptionRenderer;
 use Psr\Http\Message\ResponseInterface;
 
-/**
- * Custom exception renderer for API JSON responses.
- */
 class ApiExceptionRenderer extends WebExceptionRenderer
 {
-    /**
-     * Render the exception as JSON for API requests.
-     *
-     * @return \Psr\Http\Message\ResponseInterface
-     */
     public function render(): ResponseInterface
     {
         $request = $this->controller->getRequest();

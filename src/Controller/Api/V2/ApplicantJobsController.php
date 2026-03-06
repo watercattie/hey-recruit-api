@@ -14,25 +14,8 @@ use App\Validator\RequestValidator;
 use Cake\Http\Exception\BadRequestException;
 use Cake\Http\Exception\NotFoundException;
 
-/**
- * ApplicantJobs Controller
- *
- * Handles applicant-job relationship sync via REST API.
- * Uses action injection for dependencies.
- */
 class ApplicantJobsController extends ApiController
 {
-    /**
-     * List all applicant-job relationships for the authenticated company.
-     *
-     * GET /api/v2/applicant-jobs
-     *
-     * Note: Pagination planned for future version.
-     *
-     * @param \App\Repository\ApplicantJobRepository $repository Repository.
-     * @param \App\Service\ApplicantJobTransformer $transformer Transformer.
-     * @return void
-     */
     public function index(
         ApplicantJobRepository $repository,
         ApplicantJobTransformer $transformer,
@@ -45,16 +28,6 @@ class ApplicantJobsController extends ApiController
         $this->viewBuilder()->setOption('serialize', ['data']);
     }
 
-    /**
-     * Get a single applicant-job relationship.
-     *
-     * GET /api/v2/applicant-jobs/{id}
-     *
-     * @param \App\Repository\ApplicantJobRepository $repository Repository.
-     * @param \App\Service\ApplicantJobTransformer $transformer Transformer.
-     * @param string $id The applicant-job ID.
-     * @return void
-     */
     public function view(
         ApplicantJobRepository $repository,
         ApplicantJobTransformer $transformer,
@@ -72,21 +45,6 @@ class ApplicantJobsController extends ApiController
         $this->viewBuilder()->setOption('serialize', ['data']);
     }
 
-    /**
-     * Sync (upsert) applicant-job relationships.
-     *
-     * POST /api/v2/applicant-jobs
-     *
-     * Validation flow:
-     * 1. RequestValidator: Schema validation (required, format, enum) → 400
-     * 2. BusinessValidator: Business rules (job ownership) → 422
-     * 3. Service: Execute upsert
-     *
-     * @param \App\Service\ApplicantJobUpsertService $upsertService Upsert service.
-     * @param \App\Validator\RequestValidator $requestValidator Schema validator.
-     * @param \App\Validator\BusinessValidator $businessValidator Business validator.
-     * @return void
-     */
     public function add(
         ApplicantJobUpsertService $upsertService,
         RequestValidator $requestValidator,
